@@ -340,6 +340,353 @@ Isso depende de outra regra: **preço zero é permitido ou também deve lançar 
 ## 7. `@CsvSource`: vários argumentos simples
 
 Cada String representa uma execução. As colunas são enviadas aos parâmetros na mesma ordem.
+## [BÁSICO] Objetivo do teste
+
+Esse código verifica se o método `Desconto.calcular()` aplica corretamente diferentes percentuais de desconto.
+
+Em vez de criar quatro métodos de teste, usamos um **teste parametrizado**. O JUnit executa o mesmo método quatro vezes, usando uma linha diferente do `@CsvSource` em cada execução.
+
+Pense no `@CsvSource` como uma pequena tabela:
+
+|     Preço | Desconto | Resultado esperado |
+| --------: | -------: | -----------------: |
+| R$ 100,00 |      10% |           R$ 90,00 |
+| R$ 200,00 |      25% |          R$ 150,00 |
+|  R$ 80,00 |       0% |           R$ 80,00 |
+|  R$ 50,00 |     100% |            R$ 0,00 |
+
+## Código completamente comentado
+
+```java
+// Indica que este método é um teste parametrizado.
+// Isso permite executar o mesmo teste várias vezes,
+// utilizando diferentes conjuntos de valores.
+@ParameterizedTest(
+
+        // Define como cada execução aparecerá no relatório do JUnit.
+        //
+        // {index} = número da execução do teste.
+        // {0}     = primeiro valor recebido: preço.
+        // {1}     = segundo valor recebido: percentual.
+        // {2}     = terceiro valor recebido: resultado esperado.
+        //
+        // Exemplo exibido no relatório:
+        // caso 1: R$ 100.00 - 10% deve resultar em R$ 90.00
+        name = "caso {index}: R$ {0} - {1}% deve resultar em R$ {2}"
+)
+
+// Fornece os dados que serão usados pelo teste.
+//
+// Cada String representa uma execução.
+// Os valores são separados por vírgulas e enviados,
+// na mesma ordem, aos parâmetros do método de teste.
+@CsvSource({
+
+    // preco = 100.00
+    // percentual = 10
+    // esperado = 90.00
+    "100.00,  10,  90.00",
+
+    // preco = 200.00
+    // percentual = 25
+    // esperado = 150.00
+    "200.00,  25, 150.00",
+
+    // Caso de fronteira: desconto de 0%.
+    // O preço deve permanecer igual.
+    " 80.00,   0,  80.00",
+
+    // Caso de fronteira: desconto de 100%.
+    // O resultado deve ser zero.
+    " 50.00, 100,   0.00"
+})
+
+// Nome descritivo do comportamento esperado.
+//
+// O método será executado quatro vezes.
+// Em cada execução, os parâmetros receberão
+// os valores de uma linha do @CsvSource.
+void calcularDeveAplicarPercentual(
+
+        // Recebe o primeiro valor de cada linha.
+        double preco,
+
+        // Recebe o segundo valor de cada linha.
+        int percentual,
+
+        // Recebe o terceiro valor de cada linha.
+        double esperado) {
+
+    // ACT — Ação
+    //
+    // Executa o comportamento que está sendo testado.
+    // O método calcular() recebe o preço e o percentual.
+    //
+    // O resultado devolvido é armazenado na variável "obtido".
+    double obtido = Desconto.calcular(preco, percentual);
+
+    // ASSERT — Verificação
+    //
+    // Compara o resultado esperado com o resultado obtido.
+    //
+    // 1º argumento: valor esperado.
+    // 2º argumento: valor obtido pelo método.
+    // 3º argumento: delta ou margem de tolerância.
+    //
+    // O teste será aprovado se a diferença entre os valores
+    // for menor ou igual a 0.001.
+    assertEquals(esperado, obtido, 0.001);
+}
+```
+
+## [INTERMEDIÁRIO] Entendendo cada parte
+
+### 1. `@ParameterizedTest`
+
+```java
+@ParameterizedTest
+```
+
+Essa anotação informa ao JUnit:
+
+> “Este método não será executado apenas uma vez. Ele receberá diferentes conjuntos de dados.”
+
+Sem teste parametrizado, seria necessário escrever algo parecido com:
+
+```java
+@Test
+void deveAplicarDezPorCento() {
+    double obtido = Desconto.calcular(100.00, 10);
+    assertEquals(90.00, obtido, 0.001);
+}
+
+@Test
+void deveAplicarVinteECincoPorCento() {
+    double obtido = Desconto.calcular(200.00, 25);
+    assertEquals(150.00, obtido, 0.001);
+}
+```
+
+O teste parametrizado reduz repetição e facilita a inclusão de novos casos.
+
+---
+
+### 2. Nome de cada execução
+
+```java
+name = "caso {index}: R$ {0} - {1}% deve resultar em R$ {2}"
+```
+
+Os marcadores são substituídos pelos valores de cada execução:
+
+| Marcador  | Representa                      |
+| --------- | ------------------------------- |
+| `{index}` | Número da execução              |
+| `{0}`     | Primeiro argumento: `preco`     |
+| `{1}`     | Segundo argumento: `percentual` |
+| `{2}`     | Terceiro argumento: `esperado`  |
+
+O relatório ficará semelhante a:
+
+```text
+caso 1: R$ 100.00 - 10% deve resultar em R$ 90.00
+caso 2: R$ 200.00 - 25% deve resultar em R$ 150.00
+caso 3: R$ 80.00 - 0% deve resultar em R$ 80.00
+caso 4: R$ 50.00 - 100% deve resultar em R$ 0.00
+```
+
+Isso ajuda a identificar rapidamente qual conjunto de dados falhou.
+
+---
+
+### 3. `@CsvSource`
+
+```java
+@CsvSource({
+    "100.00, 10, 90.00",
+    "200.00, 25, 150.00"
+})
+```
+
+CSV significa **Comma-Separated Values**, ou valores separados por vírgulas.
+
+Cada linha representa um cenário:
+
+```text
+preço, percentual, resultado esperado
+```
+
+O JUnit converte automaticamente os textos para os tipos declarados no método:
+
+```java
+void calcularDeveAplicarPercentual(
+    double preco,
+    int percentual,
+    double esperado
+)
+```
+
+A relação acontece pela posição:
+
+```text
+"100.00, 10, 90.00"
+     ↓     ↓     ↓
+  preco percentual esperado
+```
+
+Portanto, a ordem dos valores precisa corresponder à ordem dos parâmetros.
+
+---
+
+### 4. Onde está o Arrange?
+
+O teste segue o padrão AAA:
+
+* **Arrange:** preparação;
+* **Act:** ação;
+* **Assert:** verificação.
+
+Neste caso, o `Arrange` está implicitamente no `@CsvSource`:
+
+```java
+@CsvSource({
+    "100.00, 10, 90.00"
+})
+```
+
+Os valores já chegam preparados ao método:
+
+```java
+double preco,
+int percentual,
+double esperado
+```
+
+Assim, o corpo do teste precisa apenas executar e verificar.
+
+---
+
+### 5. Cálculo esperado
+
+Para calcular o desconto, podemos usar:
+
+```text
+desconto = preço × percentual ÷ 100
+```
+
+Depois:
+
+```text
+valor final = preço − desconto
+```
+
+No primeiro cenário:
+
+```text
+desconto = 100 × 10 ÷ 100
+desconto = 10
+
+valor final = 100 − 10
+valor final = 90
+```
+
+O teste espera:
+
+```java
+esperado = 90.00;
+```
+
+---
+
+## [AVANÇADO] Por que utilizar o delta?
+
+O teste usa:
+
+```java
+assertEquals(esperado, obtido, 0.001);
+```
+
+Para números inteiros, normalmente fazemos uma comparação direta:
+
+```java
+assertEquals(10, resultado);
+```
+
+Entretanto, valores `double` podem apresentar pequenas imprecisões porque são armazenados em representação binária.
+
+Um cálculo que deveria produzir:
+
+```text
+90.00
+```
+
+poderia, em determinadas operações, resultar internamente em algo como:
+
+```text
+89.999999999
+```
+
+O `delta` define uma margem aceitável:
+
+```java
+0.001
+```
+
+O JUnit verifica:
+
+```text
+|esperado − obtido| ≤ delta
+```
+
+Por exemplo:
+
+```text
+esperado = 90.000
+obtido   = 89.9995
+
+diferença = 0.0005
+```
+
+Como `0.0005` é menor que `0.001`, o teste passa.
+
+O terceiro argumento não é uma quantidade de casas decimais. Ele é uma **tolerância numérica**.
+
+## Casos de fronteira presentes
+
+O teste não verifica apenas valores comuns. Ele também cobre os limites válidos:
+
+```java
+"80.00, 0, 80.00"
+```
+
+Com desconto de `0%`, o preço deve permanecer igual.
+
+```java
+"50.00, 100, 0.00"
+```
+
+Com desconto de `100%`, o resultado deve ser zero.
+
+Esses testes são importantes porque erros costumam aparecer nos limites das regras.
+
+## Imports necessários
+
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+```
+
+Pergunta de verificação: se acrescentarmos a linha abaixo, quais valores serão recebidos por `preco`, `percentual` e `esperado`?
+
+```java
+"300.00, 50, 150.00"
+```
+
+
+
+
 
 ```java
 @ParameterizedTest(
