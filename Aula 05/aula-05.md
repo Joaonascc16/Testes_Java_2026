@@ -317,9 +317,9 @@ assertEquals(
 );
 ```
 Esse assertEquals compara:
-
+```java
 assertEquals(resultadoEsperado, resultadoObtido);
-
+```
 Assim, o teste documenta precisamente a regra de negócio.
 
 Imports necessários
@@ -330,7 +330,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 ```
-Pequeno desafio: por que esse teste não utiliza 0.0 entre os valores inválidos? Isso depende de outra regra: preço zero é permitido ou também deve lançar exceção?
+**Pequeno desafio:**
+
+Por que esse teste não utiliza 0.0 entre os valores inválidos? 
+
+Isso depende de outra regra: **preço zero é permitido ou também deve lançar exceção?**
 
 
 ## 7. `@CsvSource`: vários argumentos simples
