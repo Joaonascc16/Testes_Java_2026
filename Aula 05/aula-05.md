@@ -280,6 +280,59 @@ Ele verifica duas coisas:
 
 Além disso, devolve a exceção capturada, permitindo verificar sua mensagem.
 
+##    6.4. O que é a expressão lambda?
+```java
+() -> Desconto.calcular(preco, percentual)
+```
+Essa expressão significa:
+
+**“Quando o assertThrows solicitar, execute o método Desconto.calcular.”**
+
+Ela poderia ser representada de maneira mais extensa:
+```java
+() -> {
+    Desconto.calcular(preco, percentual);
+}
+```
+
+A chamada não pode ser feita diretamente assim:
+
+```java
+// Incorreto
+assertThrows(
+    IllegalArgumentException.class,
+    Desconto.calcular(preco, percentual)
+);
+```
+O assertThrows precisa receber uma ação para executar e monitorar, não o resultado imediato do método.
+
+
+##    6.5. Por que conferir a mensagem?
+
+Verificar apenas a classe da exceção confirma que ocorreu um erro, mas não garante que ele aconteceu pelo motivo correto.
+```java
+assertEquals(
+    "O preço não pode ser negativo.",
+    excecao.getMessage()
+);
+```
+Esse assertEquals compara:
+
+assertEquals(resultadoEsperado, resultadoObtido);
+
+Assim, o teste documenta precisamente a regra de negócio.
+
+Imports necessários
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+```
+Pequeno desafio: por que esse teste não utiliza 0.0 entre os valores inválidos? Isso depende de outra regra: preço zero é permitido ou também deve lançar exceção?
+
+
 ## 7. `@CsvSource`: vários argumentos simples
 
 Cada String representa uma execução. As colunas são enviadas aos parâmetros na mesma ordem.
