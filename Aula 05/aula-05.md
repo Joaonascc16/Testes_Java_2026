@@ -238,6 +238,22 @@ Cada valor chega separadamente ao parâmetro `preco`.
 
 Tipos suportados incluem `strings`, `ints`, `longs`, `doubles`, `floats`, `shorts`, `bytes`, `chars`, `booleans` e `classes`.
 
+##    1. O que é um teste parametrizado?
+
+Um teste parametrizado recebe diferentes dados sem que seja necessário repetir o código:
+```java
+@ValueSource(doubles = {-0.01, -1.0, -100.0})
+``
+
+É equivalente a escrever três testes separados:
+```java
+precoNegativoDeveLancarExcecao(-0.01);
+precoNegativoDeveLancarExcecao(-1.0);
+precoNegativoDeveLancarExcecao(-100.0);
+```
+A vantagem é evitar repetição e facilitar a inclusão de novos casos.
+
+
 ## 7. `@CsvSource`: vários argumentos simples
 
 Cada String representa uma execução. As colunas são enviadas aos parâmetros na mesma ordem.
