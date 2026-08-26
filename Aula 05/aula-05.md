@@ -265,10 +265,13 @@ O teste está organizado segundo o padrão Arrange–Act–Assert:
 ---------------------------------------------------------------
 
 3. O que assertThrows verifica?
+
+```java
 IllegalArgumentException excecao = assertThrows(
     IllegalArgumentException.class,
     () -> Desconto.calcular(preco, percentual)
 );
+```
 
 Ele verifica duas coisas:
 
