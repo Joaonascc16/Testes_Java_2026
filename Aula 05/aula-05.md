@@ -340,7 +340,32 @@ Isso depende de outra regra: **preço zero é permitido ou também deve lançar 
 ## 7. `@CsvSource`: vários argumentos simples
 
 Cada String representa uma execução. As colunas são enviadas aos parâmetros na mesma ordem.
-## [BÁSICO] Objetivo do teste
+
+```java
+@ParameterizedTest(
+        name = "caso {index}: R$ {0} - {1}% deve resultar em R$ {2}"
+)
+@CsvSource({
+    "100.00,  10,  90.00",
+    "200.00,  25, 150.00",
+    " 80.00,   0,  80.00",
+    " 50.00, 100,   0.00"
+})
+void calcularDeveAplicarPercentual(
+        double preco,
+        int percentual,
+        double esperado) {
+
+    // Act
+    double obtido = Desconto.calcular(preco, percentual);
+
+    // Assert: esperado, obtido e delta.
+    assertEquals(esperado, obtido, 0.001);
+}
+```
+
+
+## Objetivo do teste
 
 Esse código verifica se o método `Desconto.calcular()` aplica corretamente diferentes percentuais de desconto.
 
@@ -439,7 +464,7 @@ void calcularDeveAplicarPercentual(
 }
 ```
 
-## [INTERMEDIÁRIO] Entendendo cada parte
+## Entendendo cada parte
 
 ### 1. `@ParameterizedTest`
 
@@ -598,7 +623,7 @@ esperado = 90.00;
 
 ---
 
-## [AVANÇADO] Por que utilizar o delta?
+## Por que utilizar o delta?
 
 O teste usa:
 
@@ -688,36 +713,8 @@ Pergunta de verificação: se acrescentarmos a linha abaixo, quais valores serã
 
 
 
-```java
-@ParameterizedTest(
-        name = "caso {index}: R$ {0} - {1}% deve resultar em R$ {2}"
-)
-@CsvSource({
-    "100.00,  10,  90.00",
-    "200.00,  25, 150.00",
-    " 80.00,   0,  80.00",
-    " 50.00, 100,   0.00"
-})
-void calcularDeveAplicarPercentual(
-        double preco,
-        int percentual,
-        double esperado) {
 
-    // Act
-    double obtido = Desconto.calcular(preco, percentual);
 
-    // Assert: esperado, obtido e delta.
-    assertEquals(esperado, obtido, 0.001);
-}
-```
-
-Mapeamento da primeira linha:
-
-| Coluna | Texto na fonte | Parâmetro Java |
-|---|---:|---|
-| 1 | `100.00` | `double preco` |
-| 2 | `10` | `int percentual` |
-| 3 | `90.00` | `double esperado` |
 
 ### Textos que contêm vírgulas
 
