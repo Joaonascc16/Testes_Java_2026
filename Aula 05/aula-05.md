@@ -238,12 +238,12 @@ Cada valor chega separadamente ao parâmetro `preco`.
 
 Tipos suportados incluem `strings`, `ints`, `longs`, `doubles`, `floats`, `shorts`, `bytes`, `chars`, `booleans` e `classes`.
 
-##    1. O que é um teste parametrizado?
+##    6.1. O que é um teste parametrizado?
 
 Um teste parametrizado recebe diferentes dados sem que seja necessário repetir o código:
 ```java
 @ValueSource(doubles = {-0.01, -1.0, -100.0})
-``
+```
 
 É equivalente a escrever três testes separados:
 ```java
@@ -253,6 +253,29 @@ precoNegativoDeveLancarExcecao(-100.0);
 ```
 A vantagem é evitar repetição e facilitar a inclusão de novos casos.
 
+##    6.2. O padrão AAA
+
+O teste está organizado segundo o padrão Arrange–Act–Assert:
+
+|Etapa	|Significado	|Neste teste|
+|:-------|:----------:|---------------:|
+|Arrange|	Preparar os dados	|Define percentual = 10|
+|Act	|Executar o comportamento	|Chama Desconto.calcular()|
+|Assert	|Conferir o resultado	|Verifica a mensagem da exceção|
+---------------------------------------------------------------
+
+3. O que assertThrows verifica?
+IllegalArgumentException excecao = assertThrows(
+    IllegalArgumentException.class,
+    () -> Desconto.calcular(preco, percentual)
+);
+
+Ele verifica duas coisas:
+
+O método realmente lançou uma exceção.
+A exceção é do tipo IllegalArgumentException.
+
+Além disso, devolve a exceção capturada, permitindo verificar sua mensagem.
 
 ## 7. `@CsvSource`: vários argumentos simples
 
