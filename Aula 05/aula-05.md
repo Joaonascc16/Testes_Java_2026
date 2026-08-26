@@ -275,8 +275,8 @@ IllegalArgumentException excecao = assertThrows(
 
 Ele verifica duas coisas:
 
-###    1 - O método realmente lançou uma exceção.
-###    2 - A exceção é do tipo IllegalArgumentException.
+   -    1 - O método realmente lançou uma exceção.
+   -    2 - A exceção é do tipo IllegalArgumentException.
 
 Além disso, devolve a exceção capturada, permitindo verificar sua mensagem.
 
