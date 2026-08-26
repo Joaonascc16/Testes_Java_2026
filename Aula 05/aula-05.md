@@ -172,22 +172,64 @@ import static org.junit.jupiter.api.Assertions.*;
 Use quando apenas um valor varia entre as execuções.
 
 ```java
+// Indica que este é um teste parametrizado.
+// Isso significa que o mesmo teste será executado várias vezes,
+// recebendo um valor diferente em cada execução.
+//
+// {0} representa o primeiro argumento recebido pelo método.
+// Exemplos de nomes exibidos no relatório:
+// "preço inválido: -0.01"
+// "preço inválido: -1.0"
+// "preço inválido: -100.0"
 @ParameterizedTest(name = "preço inválido: {0}")
+
+// Fornece os valores que serão enviados ao parâmetro "preco".
+// Como o parâmetro é double, usamos doubles.
+//
+// O teste será executado três vezes:
+// 1ª execução: preco = -0.01
+// 2ª execução: preco = -1.0
+// 3ª execução: preco = -100.0
 @ValueSource(doubles = {-0.01, -1.0, -100.0})
 void precoNegativoDeveLancarExcecao(double preco) {
-    // Arrange: o preço vem da anotação e o percentual é fixo.
+
+    // ARRANGE — Preparação
+    //
+    // O preço não precisa ser criado aqui, pois é recebido
+    // como parâmetro por meio do @ValueSource.
+    //
+    // O percentual de desconto será o mesmo nas três execuções.
     int percentual = 10;
 
-    // Act: assertThrows executa a expressão e captura a exceção.
+    // ACT — Ação
+    //
+    // O assertThrows verifica se o código executado dentro da
+    // expressão lambda lança a exceção esperada.
+    //
+    // IllegalArgumentException.class:
+    // informa qual tipo de exceção esperamos.
+    //
+    // () -> Desconto.calcular(preco, percentual):
+    // é uma expressão lambda que representa o código que será executado.
+    //
+    // Se Desconto.calcular() não lançar a exceção, o teste falha.
+    // Se lançar outra exceção, o teste também falha.
+    //
+    // A exceção lançada é capturada e armazenada na variável "excecao".
     IllegalArgumentException excecao = assertThrows(
             IllegalArgumentException.class,
             () -> Desconto.calcular(preco, percentual)
     );
 
-    // Assert: a mensagem documenta a regra de negócio.
+    // ASSERT — Verificação
+    //
+    // Além de verificar o tipo da exceção, também conferimos
+    // se a mensagem está correta.
+    //
+    // excecao.getMessage() recupera a mensagem da exceção lançada.
     assertEquals(
-            "O preço não pode ser negativo.",
-            excecao.getMessage()
+            "O preço não pode ser negativo.", // Resultado esperado
+            excecao.getMessage()              // Resultado obtido
     );
 }
 ```
