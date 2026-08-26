@@ -711,33 +711,740 @@ Pergunta de verificação: se acrescentarmos a linha abaixo, quais valores serã
 
 ## 8. `@MethodSource`: objetos e dados construídos
 
-Use quando a anotação ficaria difícil de ler ou quando os casos incluem objetos.
+Antes de observar os detalhes, pense: e se cada cenário de teste precisasse receber não apenas números, mas também objetos como `Produto`, `Cliente` ou `Cupom`? O `@CsvSource` trabalha bem com dados simples, mas começaria a ficar limitado. É nesse ponto que o `@MethodSource` se torna útil.
+
+## O que esse código faz?
+
+Esse é um teste parametrizado do JUnit 5 que verifica três situações:
+
+| Descrição        |     Preço | Desconto | Resultado esperado |
+| ---------------- | --------: | -------: | -----------------: |
+| Sem desconto     |  R$ 80,00 |       0% |           R$ 80,00 |
+| Desconto parcial | R$ 200,00 |      25% |          R$ 150,00 |
+| Desconto total   |  R$ 50,00 |     100% |            R$ 0,00 |
+
+O método `cenariosDeDesconto()` fornece os dados. Para cada `Arguments.of(...)`, o JUnit executa novamente o teste `calcularDeveAtenderCenarios()`.
+
+É como uma professora que prepara uma lista de exercícios e entrega cada questão, uma de cada vez, para o mesmo procedimento de correção.
+
+## Código completamente comentado
 
 ```java
+// Indica que o método abaixo é um teste parametrizado.
+//
+// Diferentemente de @Test, que normalmente executa o método uma vez,
+// @ParameterizedTest permite executar o mesmo teste várias vezes,
+// utilizando conjuntos diferentes de dados.
+//
+// name = "{0}" define o nome de cada execução no relatório.
+// {0} representa o primeiro argumento recebido pelo teste,
+// que, neste caso, é a variável "descricao".
 @ParameterizedTest(name = "{0}")
+
+// Informa que os argumentos do teste serão fornecidos
+// pelo método chamado "cenariosDeDesconto".
+//
+// O nome escrito aqui deve ser exatamente igual ao nome
+// do método fornecedor declarado mais abaixo.
 @MethodSource("cenariosDeDesconto")
 void calcularDeveAtenderCenarios(
+
+        // Recebe o primeiro valor de Arguments.of().
+        // É usado para identificar e explicar o cenário.
         String descricao,
+
+        // Recebe o segundo valor: preço original.
         double preco,
+
+        // Recebe o terceiro valor: percentual do desconto.
         int percentual,
+
+        // Recebe o quarto valor: resultado que esperamos obter.
         double esperado) {
 
+    // ACT — Ação
+    //
+    // Executa o método que está sendo testado.
+    // O resultado calculado é guardado na variável "obtido".
     double obtido = Desconto.calcular(preco, percentual);
 
-    // A descrição também funciona como mensagem em caso de falha.
+    // ASSERT — Verificação
+    //
+    // Compara o resultado esperado com o resultado obtido.
+    //
+    // 1º argumento: resultado esperado;
+    // 2º argumento: resultado obtido;
+    // 3º argumento: delta, ou margem de tolerância;
+    // 4º argumento: mensagem exibida se o teste falhar.
+    //
+    // O teste será aprovado se:
+    // |esperado - obtido| <= 0.001
     assertEquals(esperado, obtido, 0.001, descricao);
 }
 
+// Método fornecedor dos argumentos.
+//
+// Ele é static porque, por padrão, o JUnit precisa acessar
+// os dados antes de criar uma instância da classe de teste.
 static Stream<Arguments> cenariosDeDesconto() {
+
+    // Stream.of() cria um fluxo contendo os diferentes
+    // conjuntos de argumentos utilizados pelo teste.
     return Stream.of(
+
+        // Primeira execução:
+        // descricao = "sem desconto"
+        // preco = 80.0
+        // percentual = 0
+        // esperado = 80.0
+        Arguments.of(
+            "sem desconto",
+            80.0,
+            0,
+            80.0
+        ),
+
+        // Segunda execução:
+        // descricao = "desconto parcial"
+        // preco = 200.0
+        // percentual = 25
+        // esperado = 150.0
+        Arguments.of(
+            "desconto parcial",
+            200.0,
+            25,
+            150.0
+        ),
+
+        // Terceira execução:
+        // descricao = "desconto total"
+        // preco = 50.0
+        // percentual = 100
+        // esperado = 0.0
+        Arguments.of(
+            "desconto total",
+            50.0,
+            100,
+            0.0
+        )
+    );
+}
+```
+
+Imports necessários:
+
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+```
+
+---
+
+# [INTERMEDIÁRIO] Conceitos aplicados
+
+## 1. Teste parametrizado
+
+A anotação:
+
+```java
+@ParameterizedTest(name = "{0}")
+```
+
+indica que o mesmo teste será executado várias vezes.
+
+Sem parametrização, precisaríamos criar três métodos:
+
+```java
+@Test
+void deveManterPrecoSemDesconto() {
+    assertEquals(80.0, Desconto.calcular(80.0, 0), 0.001);
+}
+
+@Test
+void deveAplicarDescontoParcial() {
+    assertEquals(150.0, Desconto.calcular(200.0, 25), 0.001);
+}
+
+@Test
+void deveAplicarDescontoTotal() {
+    assertEquals(0.0, Desconto.calcular(50.0, 100), 0.001);
+}
+```
+
+O teste parametrizado evita repetição sem eliminar os diferentes cenários.
+
+## 2. O que é `@MethodSource`?
+
+```java
+@MethodSource("cenariosDeDesconto")
+```
+
+Essa anotação informa ao JUnit:
+
+> “Busque os dados do teste no método chamado `cenariosDeDesconto`.”
+
+O método fornecedor é:
+
+```java
+static Stream<Arguments> cenariosDeDesconto()
+```
+
+A ligação ocorre pelo nome:
+
+```text
+@MethodSource("cenariosDeDesconto")
+                       │
+                       ▼
+static Stream<Arguments> cenariosDeDesconto()
+```
+
+Se o nome estiver escrito incorretamente, o JUnit não encontrará a fonte dos argumentos e o teste apresentará erro.
+
+## 3. O que é `Arguments`?
+
+Cada `Arguments.of()` representa uma linha ou um cenário:
+
+```java
+Arguments.of("desconto parcial", 200.0, 25, 150.0)
+```
+
+Os dados são associados aos parâmetros do teste pela posição:
+
+| Posição | Valor fornecido      | Parâmetro que recebe |
+| ------: | -------------------- | -------------------- |
+|       0 | `"desconto parcial"` | `String descricao`   |
+|       1 | `200.0`              | `double preco`       |
+|       2 | `25`                 | `int percentual`     |
+|       3 | `150.0`              | `double esperado`    |
+
+Portanto, a ordem e os tipos devem ser compatíveis.
+
+Este cenário produz uma chamada equivalente a:
+
+```java
+calcularDeveAtenderCenarios(
+    "desconto parcial",
+    200.0,
+    25,
+    150.0
+);
+```
+
+## 4. O que significa `{0}`?
+
+```java
+@ParameterizedTest(name = "{0}")
+```
+
+O marcador `{0}` representa o primeiro argumento do teste:
+
+```java
+String descricao
+```
+
+Assim, as execuções aparecem aproximadamente desta maneira no relatório:
+
+```text
+sem desconto
+desconto parcial
+desconto total
+```
+
+Também poderíamos criar um nome mais detalhado:
+
+```java
+@ParameterizedTest(
+    name = "caso {index}: {0} — R$ {1} com {2}% deve resultar em R$ {3}"
+)
+```
+
+Os marcadores seriam:
+
+| Marcador  | Significado        |
+| --------- | ------------------ |
+| `{index}` | Número da execução |
+| `{0}`     | Descrição          |
+| `{1}`     | Preço              |
+| `{2}`     | Percentual         |
+| `{3}`     | Resultado esperado |
+
+## 5. O que é `Stream<Arguments>`?
+
+```java
+Stream<Arguments>
+```
+
+Um `Stream` representa uma sequência de elementos que podem ser processados.
+
+Neste caso, cada elemento é um objeto do tipo `Arguments`:
+
+```java
+return Stream.of(
+    Arguments.of(...),
+    Arguments.of(...),
+    Arguments.of(...)
+);
+```
+
+Podemos entender o fluxo assim:
+
+```text
+cenário 1 → cenário 2 → cenário 3
+```
+
+O JUnit percorre esse fluxo e executa o teste para cada elemento.
+
+### Por que usar `Stream`?
+
+O `Stream` permite:
+
+* fornecer vários cenários;
+* gerar casos de teste dinamicamente;
+* filtrar ou transformar dados;
+* construir dados usando lógica Java;
+* trabalhar com objetos complexos.
+
+## 6. Por que o método fornecedor é `static`?
+
+```java
+static Stream<Arguments> cenariosDeDesconto()
+```
+
+Normalmente, o JUnit cria uma nova instância da classe de teste para cada execução. O método `static` pertence à classe, e não a uma instância específica.
+
+Isso permite ao JUnit obter os dados independentemente da criação de um objeto da classe de teste.
+
+Analogia: um método `static` funciona como um material disponível na sala dos professores; não é necessário chamar uma professora específica para acessá-lo.
+
+## 7. O padrão AAA
+
+O teste segue o padrão Arrange–Act–Assert, embora o `Arrange` esteja fora do corpo do teste.
+
+### Arrange — preparação
+
+Os dados são preparados no método fornecedor:
+
+```java
+Arguments.of("desconto parcial", 200.0, 25, 150.0)
+```
+
+### Act — ação
+
+O método é executado:
+
+```java
+double obtido = Desconto.calcular(preco, percentual);
+```
+
+### Assert — verificação
+
+O resultado é comparado:
+
+```java
+assertEquals(esperado, obtido, 0.001, descricao);
+```
+
+## 8. Por que utilizar o `delta`?
+
+```java
+assertEquals(esperado, obtido, 0.001, descricao);
+```
+
+O `double` utiliza representação binária e pode apresentar pequenas diferenças de precisão.
+
+O JUnit verifica:
+
+```text
+|esperado − obtido| ≤ 0.001
+```
+
+Exemplo:
+
+```text
+esperado = 150.0000
+obtido   = 149.9995
+diferença = 0.0005
+```
+
+Como `0.0005` é menor que `0.001`, o teste passa.
+
+O `delta` não representa a quantidade de casas decimais. Ele representa a diferença máxima aceitável.
+
+## 9. A mensagem de falha
+
+```java
+assertEquals(esperado, obtido, 0.001, descricao);
+```
+
+O quarto argumento é uma mensagem adicional.
+
+Se o cenário `"desconto parcial"` falhar, a mensagem ajuda a identificar o contexto:
+
+```text
+desconto parcial ==> expected: <150.0> but was: <...>
+```
+
+A descrição cumpre duas funções:
+
+* nomeia a execução por meio de `{0}`;
+* complementa a mensagem de falha do `assertEquals`.
+
+---
+
+# [AVANÇADO] Análise aprofundada
+
+## 1. Por que usar `@MethodSource` em vez de `@CsvSource`?
+
+Para esses valores simples, as duas opções funcionariam. O `@MethodSource` se destaca quando os dados precisam ser construídos com Java.
+
+| Característica                 | `@CsvSource`   | `@MethodSource`       |
+| ------------------------------ | -------------- | --------------------- |
+| Números e textos simples       | Excelente      | Funciona              |
+| Objetos personalizados         | Limitado       | Excelente             |
+| Dados calculados               | Pouco adequado | Excelente             |
+| Reutilização da fonte          | Limitada       | Maior                 |
+| Leitura rápida de poucos casos | Melhor         | Pode ser mais extenso |
+| Lógica para gerar cenários     | Não            | Sim                   |
+| Segurança de tipos             | Menor          | Maior                 |
+
+Exemplo com `@CsvSource`:
+
+```java
+@CsvSource({
+    "80.0, 0, 80.0",
+    "200.0, 25, 150.0"
+})
+```
+
+Os dados são inicialmente escritos como texto e convertidos pelo JUnit.
+
+Com `@MethodSource`:
+
+```java
+Arguments.of("desconto parcial", 200.0, 25, 150.0)
+```
+
+Os valores já são objetos Java com seus respectivos tipos.
+
+## 2. Uso com objetos complexos
+
+A maior vantagem aparece quando o teste utiliza objetos.
+
+Considere:
+
+```java
+class Produto {
+
+    private final String nome;
+    private final double preco;
+
+    Produto(String nome, double preco) {
+        this.nome = nome;
+        this.preco = preco;
+    }
+
+    public double getPreco() {
+        return preco;
+    }
+}
+```
+
+O método fornecedor pode criar diferentes produtos:
+
+```java
+static Stream<Arguments> cenariosComProdutos() {
+    return Stream.of(
+        Arguments.of(
+            "Notebook com 10% de desconto",
+            new Produto("Notebook", 3000.0),
+            10,
+            2700.0
+        ),
+        Arguments.of(
+            "Mouse sem desconto",
+            new Produto("Mouse", 100.0),
+            0,
+            100.0
+        )
+    );
+}
+```
+
+E o teste recebe o objeto diretamente:
+
+```java
+@ParameterizedTest(name = "{0}")
+@MethodSource("cenariosComProdutos")
+void deveCalcularDescontoDoProduto(
+        String descricao,
+        Produto produto,
+        int percentual,
+        double esperado) {
+
+    double obtido = Desconto.calcular(
+        produto.getPreco(),
+        percentual
+    );
+
+    assertEquals(esperado, obtido, 0.001, descricao);
+}
+```
+
+Isso seria muito mais difícil de representar diretamente em um `@CsvSource`.
+
+## 3. O método fornecedor pode gerar dados dinamicamente
+
+Como o fornecedor é um método Java, ele pode usar cálculos:
+
+```java
+static Stream<Arguments> cenariosDeDesconto() {
+    double precoBase = 100.0;
+
+    return Stream.of(
+        Arguments.of("sem desconto", precoBase, 0, precoBase),
+        Arguments.of("metade do preço", precoBase, 50, precoBase / 2),
+        Arguments.of("desconto total", precoBase, 100, 0.0)
+    );
+}
+```
+
+Também pode transformar coleções:
+
+```java
+static Stream<Arguments> cenariosDeDesconto() {
+    return List.of(0, 25, 50, 100)
+            .stream()
+            .map(percentual -> {
+                double preco = 200.0;
+                double esperado =
+                        preco - preco * percentual / 100.0;
+
+                return Arguments.of(
+                        percentual + "% de desconto",
+                        preco,
+                        percentual,
+                        esperado
+                );
+            });
+}
+```
+
+Contudo, existe um cuidado: se o resultado esperado for calculado com a mesma fórmula da implementação, o teste pode repetir o mesmo erro do código de produção. Para casos de negócio importantes, valores esperados explícitos costumam ser mais claros.
+
+## 4. Método fornecedor não está limitado a `Stream`
+
+O `@MethodSource` aceita outras formas de retorno, como:
+
+```java
+static List<Arguments> cenariosDeDesconto() {
+    return List.of(
         Arguments.of("sem desconto", 80.0, 0, 80.0),
-        Arguments.of("desconto parcial", 200.0, 25, 150.0),
         Arguments.of("desconto total", 50.0, 100, 0.0)
     );
 }
 ```
 
-O método fornecedor é `static` por padrão e retorna um fluxo de argumentos.
+Também pode trabalhar com arrays e outros tipos iteráveis. O `Stream<Arguments>` é muito usado porque expressa claramente uma sequência de cenários.
+
+## 5. É obrigatório ser `static`?
+
+Por padrão, sim. Entretanto, é possível utilizar um método fornecedor não estático quando a classe de teste usa:
+
+```java
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class DescontoTest {
+```
+
+Exemplo:
+
+```java
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class DescontoTest {
+
+    @ParameterizedTest
+    @MethodSource("cenariosDeDesconto")
+    void calcularDeveAtenderCenarios(
+            String descricao,
+            double preco,
+            int percentual,
+            double esperado) {
+
+        double obtido = Desconto.calcular(preco, percentual);
+
+        assertEquals(esperado, obtido, 0.001, descricao);
+    }
+
+    // Agora não precisa ser static.
+    Stream<Arguments> cenariosDeDesconto() {
+        return Stream.of(
+            Arguments.of("sem desconto", 80.0, 0, 80.0)
+        );
+    }
+}
+```
+
+Isso ocorre porque `PER_CLASS` faz o JUnit utilizar uma única instância da classe de teste.
+
+Para exemplos simples, manter o fornecedor como `static` costuma ser mais direto.
+
+## 6. Fonte externa à classe
+
+O método fornecedor também pode ficar em outra classe. Nesse caso, usamos o nome totalmente qualificado:
+
+```java
+@MethodSource(
+    "org.example.CenariosDeDesconto#cenariosValidos"
+)
+```
+
+Classe fornecedora:
+
+```java
+package org.example;
+
+public class CenariosDeDesconto {
+
+    public static Stream<Arguments> cenariosValidos() {
+        return Stream.of(
+            Arguments.of("sem desconto", 80.0, 0, 80.0),
+            Arguments.of("desconto parcial", 200.0, 25, 150.0)
+        );
+    }
+}
+```
+
+Essa solução é útil quando vários testes precisam compartilhar os mesmos dados.
+
+## 7. Tipagem e autoboxing
+
+Dentro de:
+
+```java
+Arguments.of("sem desconto", 80.0, 0, 80.0)
+```
+
+os tipos primitivos são convertidos temporariamente em objetos:
+
+| Valor primitivo | Objeto correspondente |
+| --------------- | --------------------- |
+| `double`        | `Double`              |
+| `int`           | `Integer`             |
+
+Esse processo é chamado de autoboxing.
+
+Depois, ao entregar os dados para:
+
+```java
+double preco,
+int percentual,
+double esperado
+```
+
+o Java/JUnit converte os objetos novamente para tipos primitivos, em um processo chamado unboxing.
+
+## 8. Valores monetários: `double` ou `BigDecimal`?
+
+Para ensinar testes e tolerância numérica, o uso de `double` é adequado. Em sistemas financeiros reais, porém, `BigDecimal` costuma ser a escolha mais segura.
+
+```java
+BigDecimal preco = new BigDecimal("200.00");
+```
+
+Isso evita diversas imprecisões binárias associadas ao `double`.
+
+Um teste com `BigDecimal` pode comparar diretamente os valores:
+
+```java
+assertEquals(
+    new BigDecimal("150.00"),
+    obtido
+);
+```
+
+Há um detalhe: em `BigDecimal`, `equals()` também considera a escala:
+
+```java
+new BigDecimal("150.0")
+new BigDecimal("150.00")
+```
+
+Esses valores têm o mesmo valor numérico, mas escalas diferentes. Quando a escala não for relevante, podemos usar:
+
+```java
+assertEquals(
+    0,
+    esperado.compareTo(obtido)
+);
+```
+
+---
+
+## Versão final organizada
+
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class DescontoTest {
+
+    // Executa o mesmo teste para cada cenário fornecido pelo método.
+    // {0} apresenta a descrição como nome da execução.
+    @ParameterizedTest(name = "{0}")
+
+    // Indica o método responsável por fornecer os argumentos.
+    @MethodSource("cenariosDeDesconto")
+    void calcularDeveAtenderCenarios(
+            String descricao,
+            double preco,
+            int percentual,
+            double esperado) {
+
+        // Act: executa o comportamento que está sendo testado.
+        double obtido = Desconto.calcular(preco, percentual);
+
+        // Assert: compara o resultado esperado com o resultado obtido.
+        // O delta de 0.001 permite uma pequena diferença entre os doubles.
+        // A descrição será apresentada como mensagem adicional se houver falha.
+        assertEquals(esperado, obtido, 0.001, descricao);
+    }
+
+    // Arrange: fornece os conjuntos de dados do teste.
+    //
+    // É static porque, por padrão, o JUnit acessa a fonte
+    // sem depender de uma instância da classe de teste.
+    static Stream<Arguments> cenariosDeDesconto() {
+        return Stream.of(
+            // descrição, preço, percentual, resultado esperado
+            Arguments.of("sem desconto",       80.0,   0,  80.0),
+            Arguments.of("desconto parcial",  200.0,  25, 150.0),
+            Arguments.of("desconto total",     50.0, 100,   0.0)
+        );
+    }
+}
+```
+
+Em resumo, o fluxo é:
+
+1. O JUnit encontra `@MethodSource("cenariosDeDesconto")`.
+2. Executa o método fornecedor.
+3. Obtém um `Stream` com três conjuntos de `Arguments`.
+4. Distribui cada conjunto entre os parâmetros do teste.
+5. Executa `Desconto.calcular()`.
+6. Compara o resultado esperado com o obtido.
+7. Exibe a descrição do cenário no relatório.
+
+Desafio de verificação: como você adicionaria um cenário chamado `"metade do preço"`, com preço de `120.0`, desconto de `50%` e resultado esperado de `60.0`?
+
 
 ## 9. Nulos e vazios
 
