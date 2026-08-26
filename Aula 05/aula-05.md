@@ -1251,54 +1251,7 @@ static List<Arguments> cenariosDeDesconto() {
 
 Também pode trabalhar com arrays e outros tipos iteráveis. O `Stream<Arguments>` é muito usado porque expressa claramente uma sequência de cenários.
 
-##    2. O que é Stream?
-```java
-Stream
-```
-Stream significa fluxo. Ele representa uma sequência de elementos que serão disponibilizados um após o outro.
 
-No exemplo:
-```java
-return Stream.of(
-    Arguments.of("sem desconto", 80.0, 0, 80.0),
-    Arguments.of("desconto parcial", 200.0, 25, 150.0),
-    Arguments.of("desconto total", 50.0, 100, 0.0)
-);
-```
-O fluxo contém três elementos:
-```text
-cenário 1 → cenário 2 → cenário 3
-```
-O JUnit percorre esse fluxo e executa o teste três vezes.
-
-Criação do Stream
-
-O método:
-```java
-Stream.of(...)
-´´´
-cria o fluxo.
-
-Ele recebe os elementos que farão parte da sequência:
-```java
-Stream.of(
-    elemento1,
-    elemento2,
-    elemento3
-);
-```
-Neste caso, cada elemento é um Arguments:
-```java
-Stream.of(
-    Arguments.of(...),
-    Arguments.of(...),
-    Arguments.of(...)
-);
-```
-É necessário importar:
-```java
-import java.util.stream.Stream;
-```
 
 ## 5. É obrigatório ser `static`?
 
