@@ -709,31 +709,6 @@ Pergunta de verificação: se acrescentarmos a linha abaixo, quais valores serã
 "300.00, 50, 150.00"
 ```
 
-
-
-
-
-
-
-
-### Textos que contêm vírgulas
-
-Use outro delimitador:
-
-```java
-@ParameterizedTest
-@CsvSource(
-    value = {
-        "Blumenau, SC;47",
-        "Florianópolis, SC;48"
-    },
-    delimiter = ';'
-)
-void cidadeDevePossuirDdd(String cidade, int ddd) {
-    // teste ilustrativo
-}
-```
-
 ## 8. `@MethodSource`: objetos e dados construídos
 
 Use quando a anotação ficaria difícil de ler ou quando os casos incluem objetos.
