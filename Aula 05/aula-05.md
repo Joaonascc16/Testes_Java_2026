@@ -845,7 +845,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 ---
 
-# [INTERMEDIÁRIO] Conceitos aplicados
+#  Conceitos aplicados
 
 ## 1. Teste parametrizado
 
@@ -1096,7 +1096,7 @@ A descrição cumpre duas funções:
 
 ---
 
-# [AVANÇADO] Análise aprofundada
+#  Análise aprofundada
 
 ## 1. Por que usar `@MethodSource` em vez de `@CsvSource`?
 
@@ -1448,7 +1448,7 @@ Em resumo, o fluxo é:
 Desafio de verificação: como você adicionaria um cenário chamado `"metade do preço"`, com preço de `120.0`, desconto de `50%` e resultado esperado de `60.0`?
 
 
-## 9. Nulos e vazios
+## 9. Nulos, vazios e espaços em branco
 
 Para parâmetros que aceitam String, coleções ou arrays:
 
@@ -1463,6 +1463,559 @@ void nomeAusenteDeveSerRejeitado(String nome) {
     );
 }
 ```
+
+
+##  O que esse teste verifica?
+
+Este teste confere se o sistema rejeita nomes ausentes ou inválidos.
+
+Antes de analisar o código, pense nestes quatro valores:
+
+```text
+null
+""
+"   "
+"\t"
+```
+
+Todos são inválidos para um nome, mas não significam exatamente a mesma coisa:
+
+| Valor   | Significado                         |
+| ------- | ----------------------------------- |
+| `null`  | Nenhum objeto foi fornecido         |
+| `""`    | Texto existente, mas sem caracteres |
+| `"   "` | Texto contendo apenas espaços       |
+| `"\t"`  | Texto contendo uma tabulação        |
+
+O teste será executado quatro vezes, uma para cada valor.
+
+## Código completamente comentado
+
+```java
+// Indica que o método é um teste parametrizado.
+//
+// O mesmo método será executado várias vezes,
+// recebendo um valor diferente no parâmetro "nome".
+@ParameterizedTest
+
+// Combina duas fontes de dados:
+//
+// @NullSource:
+// fornece o valor null.
+//
+// @EmptySource:
+// fornece uma String vazia: "".
+//
+// Portanto, esta anotação gera duas execuções:
+// 1ª execução: nome = null
+// 2ª execução: nome = ""
+@NullAndEmptySource
+
+// Acrescenta outros valores ao teste.
+//
+// "   " representa uma String contendo três espaços.
+// "\t" representa uma String contendo uma tabulação.
+//
+// Esses valores não são tecnicamente vazios,
+// porque possuem caracteres de espaço em branco.
+@ValueSource(strings = {
+        "   ",
+        "\t"
+})
+void nomeAusenteDeveSerRejeitado(String nome) {
+
+    // Verifica se Cadastro.validarNome() lança
+    // uma IllegalArgumentException.
+    //
+    // IllegalArgumentException.class:
+    // tipo da exceção que esperamos receber.
+    //
+    // () -> Cadastro.validarNome(nome):
+    // expressão lambda que entrega ao assertThrows
+    // o código que deverá ser executado e monitorado.
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> Cadastro.validarNome(nome)
+    );
+}
+```
+
+Imports necessários:
+
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+```
+
+---
+
+#  Conceitos aplicados
+
+## 1. Teste parametrizado
+
+```java
+@ParameterizedTest
+```
+
+Essa anotação informa ao JUnit que o método deve ser executado várias vezes.
+
+Um teste comum:
+
+```java
+@Test
+void nomeAusenteDeveSerRejeitado() {
+    // Executa uma vez.
+}
+```
+
+Um teste parametrizado:
+
+```java
+@ParameterizedTest
+void nomeAusenteDeveSerRejeitado(String nome) {
+    // Executa uma vez para cada argumento fornecido.
+}
+```
+
+Neste caso, os dados vêm de duas fontes:
+
+```java
+@NullAndEmptySource
+@ValueSource(strings = {"   ", "\t"})
+```
+
+As fontes são combinadas, produzindo:
+
+| Execução | Valor recebido por `nome` | Origem                |
+| -------: | ------------------------- | --------------------- |
+|        1 | `null`                    | `@NullAndEmptySource` |
+|        2 | `""`                      | `@NullAndEmptySource` |
+|        3 | `"   "`                   | `@ValueSource`        |
+|        4 | `"\t"`                    | `@ValueSource`        |
+
+## 2. Diferença entre `null` e vazio
+
+### Valor `null`
+
+```java
+String nome = null;
+```
+
+Significa que a variável não aponta para nenhum objeto `String`.
+
+Por isso, isto provoca `NullPointerException`:
+
+```java
+nome.isEmpty();
+```
+
+Antes de chamar métodos da `String`, devemos verificar:
+
+```java
+if (nome == null) {
+    throw new IllegalArgumentException("O nome é obrigatório.");
+}
+```
+
+### String vazia
+
+```java
+String nome = "";
+```
+
+Aqui existe um objeto `String`, mas ele possui zero caracteres:
+
+```java
+nome.length(); // 0
+```
+
+Podemos verificar com:
+
+```java
+nome.isEmpty(); // true
+```
+
+### String em branco
+
+```java
+String nome = "   ";
+```
+
+Essa String não está vazia:
+
+```java
+nome.isEmpty(); // false
+```
+
+Ela contém três caracteres de espaço. Porém, está em branco:
+
+```java
+nome.isBlank(); // true
+```
+
+O método `isBlank()` considera inválida uma String formada somente por caracteres de espaço em branco.
+
+## 3. Por que usar `@ValueSource`?
+
+`@EmptySource` fornece uma String realmente vazia:
+
+```java
+""
+```
+
+Ela não fornece automaticamente textos formados por espaços:
+
+```java
+"   "
+```
+
+Nem tabulações:
+
+```java
+"\t"
+```
+
+Por isso esses casos são acrescentados por meio de:
+
+```java
+@ValueSource(strings = {"   ", "\t"})
+```
+
+Isso testa uma regra mais completa:
+
+> O nome não pode ser nulo, vazio nem formado somente por espaços em branco.
+
+## 4. O que é `\t`?
+
+```java
+"\t"
+```
+
+É uma sequência de escape que representa uma tabulação.
+
+Assim como:
+
+| Sequência | Representação              |
+| --------- | -------------------------- |
+| `\t`      | Tabulação                  |
+| `\n`      | Quebra de linha            |
+| `\"`      | Aspas dentro de uma String |
+| `\\`      | Barra invertida            |
+
+Embora não seja visível como uma letra, a tabulação é um caractere. Portanto:
+
+```java
+"\t".isEmpty(); // false
+"\t".isBlank(); // true
+```
+
+## 5. O que `assertThrows` verifica?
+
+```java
+assertThrows(
+        IllegalArgumentException.class,
+        () -> Cadastro.validarNome(nome)
+);
+```
+
+O `assertThrows` verifica se o código lança a exceção esperada.
+
+O resultado será:
+
+| Comportamento de `validarNome()` | Resultado do teste |
+| -------------------------------- | ------------------ |
+| Lança `IllegalArgumentException` | Passa              |
+| Não lança nenhuma exceção        | Falha              |
+| Lança uma exceção incompatível   | Falha              |
+
+## 6. Função da expressão lambda
+
+```java
+() -> Cadastro.validarNome(nome)
+```
+
+O lambda entrega uma ação para o JUnit executar posteriormente.
+
+Sem o lambda, o método seria executado antes que o `assertThrows` pudesse monitorá-lo.
+
+Podemos ler assim:
+
+> “JUnit, execute `Cadastro.validarNome(nome)` e verifique se ocorre a exceção esperada.”
+
+A versão extensa seria:
+
+```java
+assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+            Cadastro.validarNome(nome);
+        }
+);
+```
+
+---
+
+# Aspectos importantes
+
+## 1. `@NullAndEmptySource` é uma anotação composta
+
+Esta anotação:
+
+```java
+@NullAndEmptySource
+```
+
+equivale à combinação de:
+
+```java
+@NullSource
+@EmptySource
+```
+
+Portanto, estes dois códigos têm a mesma finalidade:
+
+```java
+@NullAndEmptySource
+```
+
+```java
+@NullSource
+@EmptySource
+```
+
+A forma combinada é mais curta e comunica diretamente a intenção.
+
+## 2. Tipos aceitos pelas anotações
+
+### `@NullSource`
+
+Pode fornecer `null` para parâmetros que aceitam referência:
+
+```java
+String nome
+List<String> nomes
+Produto produto
+int[] numeros
+```
+
+Não pode fornecer `null` para tipos primitivos:
+
+```java
+int idade
+double preco
+boolean ativo
+```
+
+Tipos primitivos não aceitam `null`.
+
+Este teste seria inválido:
+
+```java
+@ParameterizedTest
+@NullSource
+void testar(int valor) {
+}
+```
+
+Para aceitar `null`, seria necessário usar a classe correspondente:
+
+```java
+@ParameterizedTest
+@NullSource
+void testar(Integer valor) {
+}
+```
+
+### `@EmptySource`
+
+Pode criar valores vazios para tipos compatíveis, como:
+
+```java
+String
+List
+Set
+Map
+int[]
+String[]
+```
+
+Exemplos conceituais:
+
+```java
+""                  // String vazia
+List.of()           // Lista vazia
+Set.of()            // Conjunto vazio
+Map.of()            // Mapa vazio
+new int[]{}         // Array vazio
+new String[]{}      // Array vazio
+```
+
+## 3. Validação correta na classe de produção
+
+Uma possível implementação de `Cadastro.validarNome()` seria:
+
+```java
+public class Cadastro {
+
+    public static void validarNome(String nome) {
+
+        // A ordem é importante.
+        //
+        // Primeiro verificamos null.
+        // Somente depois chamamos isBlank(),
+        // pois não podemos executar um método em null.
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException(
+                    "O nome é obrigatório."
+            );
+        }
+    }
+}
+```
+
+O operador `||` utiliza curto-circuito.
+
+Se:
+
+```java
+nome == null
+```
+
+for verdadeiro, o Java não executará:
+
+```java
+nome.isBlank()
+```
+
+Isso evita uma `NullPointerException`.
+
+## 4. O teste verifica o tipo, mas não a mensagem
+
+O teste original confirma apenas a classe da exceção:
+
+```java
+assertThrows(
+        IllegalArgumentException.class,
+        () -> Cadastro.validarNome(nome)
+);
+```
+
+Para verificar também a mensagem, devemos capturar a exceção:
+
+```java
+@ParameterizedTest(name = "nome inválido: [{0}]")
+@NullAndEmptySource
+@ValueSource(strings = {"   ", "\t"})
+void nomeAusenteDeveSerRejeitado(String nome) {
+
+    // Act: executa a validação e captura a exceção.
+    IllegalArgumentException excecao = assertThrows(
+            IllegalArgumentException.class,
+            () -> Cadastro.validarNome(nome)
+    );
+
+    // Assert: verifica o motivo do erro.
+    assertEquals(
+            "O nome é obrigatório.",
+            excecao.getMessage()
+    );
+}
+```
+
+Import adicional:
+
+```java
+import static org.junit.jupiter.api.Assertions.assertEquals;
+```
+
+Essa versão documenta duas exigências:
+
+1. Deve ocorrer uma `IllegalArgumentException`.
+2. A mensagem deve ser `"O nome é obrigatório."`.
+
+## 5. `assertThrows` aceita subclasses
+
+Se esperarmos:
+
+```java
+RuntimeException.class
+```
+
+e o método lançar:
+
+```java
+IllegalArgumentException
+```
+
+o teste passa porque `IllegalArgumentException` é uma subclasse de `RuntimeException`.
+
+Para exigir exatamente um tipo de exceção, o JUnit oferece:
+
+```java
+assertThrowsExactly(
+        IllegalArgumentException.class,
+        () -> Cadastro.validarNome(nome)
+);
+```
+
+Em testes de regra de negócio, `assertThrows` normalmente é suficiente.
+
+## Versão final recomendada e comentada
+
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class CadastroTest {
+
+    // Executa o teste uma vez para cada valor fornecido.
+    //
+    // {index}: número da execução.
+    // {0}: valor recebido pelo parâmetro "nome".
+    @ParameterizedTest(
+            name = "caso {index}: nome inválido = [{0}]"
+    )
+
+    // Fornece dois valores:
+    // 1. null
+    // 2. String vazia: ""
+    @NullAndEmptySource
+
+    // Fornece valores que possuem caracteres,
+    // mas são formados somente por espaços em branco.
+    @ValueSource(strings = {
+            "   ", // Três espaços
+            "\t"   // Uma tabulação
+    })
+    void nomeAusenteDeveSerRejeitado(String nome) {
+
+        // Act: executa a validação e captura a exceção.
+        IllegalArgumentException excecao = assertThrows(
+                IllegalArgumentException.class,
+                () -> Cadastro.validarNome(nome)
+        );
+
+        // Assert: verifica se a mensagem corresponde
+        // à regra de negócio esperada.
+        assertEquals(
+                "O nome é obrigatório.",
+                excecao.getMessage()
+        );
+    }
+}
+```
+
+Em resumo, o teste garante que quatro formas diferentes de “nome ausente” sejam rejeitadas: `null`, vazio, espaços e tabulação.
+
+Desafio: `"\n"` representa uma quebra de linha. Você acredita que `"\n".isEmpty()` e `"\n".isBlank()` retornarão o mesmo resultado?
+
 
 Anotações úteis:
 
