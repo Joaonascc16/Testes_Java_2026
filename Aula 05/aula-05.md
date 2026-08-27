@@ -2073,11 +2073,45 @@ Anotações úteis:
 
 ## 10. Casos de fronteira
 
-Para uma regra que aceita percentuais entre 0 e 100:
+Como já estudamos `@ParameterizedTest`, `@ValueSource`, lambda, `assertThrows` e verificação de mensagens, agora o conceito novo é a **análise de valores-limite**, também chamada de teste de fronteira.
 
-- `0` e `100` são fronteiras válidas;
-- `-1` e `101` estão imediatamente fora da faixa;
-- `1` e `99` estão imediatamente dentro da faixa.
+## O que é uma fronteira?
+
+Uma fronteira é o ponto em que uma entrada deixa de ser válida e passa a ser inválida — ou o contrário.
+
+A regra informa:
+
+```text
+O percentual deve estar entre 0 e 100.
+```
+
+Isso normalmente significa que os extremos estão incluídos:
+
+```text
+0 ≤ percentual ≤ 100
+```
+
+Consequentemente:
+
+| Percentual | Situação | Motivo                         |
+| ---------: | -------- | ------------------------------ |
+|       `-1` | Inválido | Imediatamente abaixo do mínimo |
+|        `0` | Válido   | Limite mínimo                  |
+|        `1` | Válido   | Imediatamente acima do mínimo  |
+|       `99` | Válido   | Imediatamente abaixo do máximo |
+|      `100` | Válido   | Limite máximo                  |
+|      `101` | Inválido | Imediatamente acima do máximo  |
+
+Analogia: imagine a entrada permitida entre os números 0 e 100 como um terreno cercado.
+
+* `0` e `100` estão sobre a cerca, mas pertencem ao terreno;
+* `1` e `99` estão logo dentro;
+* `-1` e `101` estão logo fora.
+
+Testar esses pontos ajuda a verificar se a “cerca” foi instalada no lugar correto.
+
+---
+
 
 Um conjunto forte de testes exercita os dois lados da transição.
 
@@ -2096,6 +2130,419 @@ void percentualForaDoIntervaloDeveFalhar(int percentual) {
     );
 }
 ```
+
+
+## Código comentado
+
+```java
+// Executa o mesmo teste para cada percentual
+// fornecido pelo @ValueSource.
+@ParameterizedTest
+
+// Fornece os dois valores inteiros que estão
+// imediatamente fora do intervalo válido:
+//
+// -1  → imediatamente abaixo do limite mínimo 0.
+// 101 → imediatamente acima do limite máximo 100.
+@ValueSource(ints = {
+        -1,
+        101
+})
+void percentualForaDoIntervaloDeveFalhar(int percentual) {
+
+    // O preço 100.0 permanece fixo para que somente
+    // o percentual seja alterado entre as execuções.
+    //
+    // Esperamos que percentuais fora da faixa provoquem
+    // uma IllegalArgumentException.
+    IllegalArgumentException excecao = assertThrows(
+            IllegalArgumentException.class,
+            () -> Desconto.calcular(100.0, percentual)
+    );
+
+    // Verifica se a mensagem corresponde à regra de negócio.
+    //
+    // Isso confirma que a exceção foi causada pelo percentual
+    // inválido, e não por outra validação do método.
+    assertEquals(
+            "O percentual deve estar entre 0 e 100.",
+            excecao.getMessage()
+    );
+}
+```
+
+Esse teste será executado duas vezes:
+
+```text
+1ª execução: percentual = -1
+2ª execução: percentual = 101
+```
+
+---
+
+# Análise de valores-limite
+
+## 1. Por que testar as fronteiras?
+
+Muitos erros acontecem nos operadores utilizados nas condições.
+
+A regra correta é:
+
+```java
+if (percentual < 0 || percentual > 100) {
+    throw new IllegalArgumentException(
+            "O percentual deve estar entre 0 e 100."
+    );
+}
+```
+
+Observe os operadores:
+
+```java
+percentual < 0
+percentual > 100
+```
+
+Eles permitem que `0` e `100` sejam válidos.
+
+Um erro comum seria:
+
+```java
+if (percentual <= 0 || percentual >= 100) {
+    throw new IllegalArgumentException(
+            "O percentual deve estar entre 0 e 100."
+    );
+}
+```
+
+Nesse código incorreto:
+
+* `0` seria rejeitado;
+* `100` também seria rejeitado.
+
+Esse é um exemplo de erro de limite, frequentemente chamado de erro **off-by-one**: a implementação erra por uma unidade na transição entre valores válidos e inválidos.
+
+## 2. Por que testar valores imediatamente próximos?
+
+Poderíamos utilizar:
+
+```java
+@ValueSource(ints = {-500, 900})
+```
+
+Esses valores confirmariam que entradas muito distantes são inválidas. Porém, não verificariam com precisão onde acontece a transição.
+
+Considere uma implementação incorreta:
+
+```java
+if (percentual < -10 || percentual > 110) {
+    throw new IllegalArgumentException();
+}
+```
+
+Os valores `-500` e `900` seriam rejeitados, e o teste passaria. Mas `-1` e `101`, que deveriam ser inválidos, seriam aceitos.
+
+Por isso usamos valores próximos à fronteira:
+
+```java
+-1, 0, 1
+```
+
+e:
+
+```java
+99, 100, 101
+```
+
+## 3. O teste apresentado verifica somente o lado inválido
+
+O código atual testa:
+
+```java
+-1
+101
+```
+
+Ele comprova que valores logo fora do intervalo são rejeitados.
+
+Entretanto, ainda precisamos comprovar que as fronteiras válidas são aceitas:
+
+```java
+0
+100
+```
+
+E que os valores logo dentro também funcionam:
+
+```java
+1
+99
+```
+
+Um conjunto mais completo teria dois testes:
+
+```java
+// Valores válidos.
+@ValueSource(ints = {0, 1, 99, 100})
+```
+
+```java
+// Valores inválidos.
+@ValueSource(ints = {-1, 101})
+```
+
+## 4. Por que o preço permanece fixo?
+
+Na chamada:
+
+```java
+Desconto.calcular(100.0, percentual)
+```
+
+o preço sempre será:
+
+```java
+100.0
+```
+
+Somente o percentual varia.
+
+Essa decisão ajuda a isolar a regra testada:
+
+```text
+Variável analisada: percentual
+Valor controlado: preço
+```
+
+Se o teste variasse preço e percentual ao mesmo tempo, uma falha poderia ter diferentes causas.
+
+Manter os outros dados fixos é semelhante a um experimento científico: alteramos uma variável enquanto controlamos as demais.
+
+---
+
+# Testando o lado válido da fronteira
+
+Para testar entradas válidas, não basta verificar que nenhuma exceção aconteceu. É melhor conferir o resultado produzido.
+
+```java
+// Define um nome claro para cada execução.
+//
+// {0} representa o percentual.
+// {1} representa o resultado esperado.
+@ParameterizedTest(
+        name = "{0}% deve resultar em R$ {1}"
+)
+
+// Exercita os dois limites válidos e os valores
+// imediatamente dentro do intervalo.
+@CsvSource({
+        // percentual, resultado esperado
+
+        // Limite mínimo válido.
+        "0,   100.0",
+
+        // Imediatamente dentro da fronteira mínima.
+        "1,    99.0",
+
+        // Imediatamente dentro da fronteira máxima.
+        "99,    1.0",
+
+        // Limite máximo válido.
+        "100,   0.0"
+})
+void percentualNaFronteiraDeveSerAceito(
+        int percentual,
+        double esperado) {
+
+    // O preço permanece fixo em R$ 100,00.
+    double obtido = Desconto.calcular(
+            100.0,
+            percentual
+    );
+
+    // Verifica se o percentual foi aplicado corretamente.
+    assertEquals(esperado, obtido, 0.001);
+}
+```
+
+Tabela dos cálculos:
+
+| Percentual | Cálculo     | Resultado |
+| ---------: | ----------- | --------: |
+|       `0%` | `100 − 0`   |     `100` |
+|       `1%` | `100 − 1`   |      `99` |
+|      `99%` | `100 − 99`  |       `1` |
+|     `100%` | `100 − 100` |       `0` |
+
+---
+
+# Partições de equivalência
+
+Os testes de fronteira estão relacionados a outro conceito: **particionamento de equivalência**.
+
+A entrada pode ser dividida em três grupos:
+
+| Partição         | Intervalo              | Situação |
+| ---------------- | ---------------------- | -------- |
+| Abaixo do mínimo | `percentual < 0`       | Inválida |
+| Dentro da faixa  | `0 ≤ percentual ≤ 100` | Válida   |
+| Acima do máximo  | `percentual > 100`     | Inválida |
+
+Dentro de cada grupo, esperamos um comportamento semelhante.
+
+Por exemplo:
+
+```text
+-1, -10 e -500
+```
+
+pertencem à mesma partição inválida. Não é necessário testar todos os números negativos. Podemos escolher um valor representativo, priorizando o mais próximo da fronteira:
+
+```java
+-1
+```
+
+O mesmo vale para valores acima do limite:
+
+```java
+101
+```
+
+## Fronteira de três pontos
+
+Para cada limite, podemos escolher três pontos:
+
+```text
+imediatamente fora | na fronteira | imediatamente dentro
+```
+
+Para o limite inferior:
+
+```text
+-1 | 0 | 1
+```
+
+Para o limite superior:
+
+```text
+99 | 100 | 101
+```
+
+Esse conjunto é forte porque examina os dois lados de cada transição.
+
+## Domínio discreto
+
+O tipo do percentual é:
+
+```java
+int percentual
+```
+
+Um `int` trabalha com valores inteiros. Portanto, existe um valor imediatamente anterior e outro imediatamente posterior:
+
+```text
+Anterior a 0    → -1
+Posterior a 0   → 1
+Anterior a 100  → 99
+Posterior a 100 → 101
+```
+
+Esse tipo de domínio é chamado de **discreto**.
+
+Se o percentual fosse `double`, não haveria um único valor imediatamente posterior a `0`, pois existiriam inúmeros valores possíveis:
+
+```text
+0.1
+0.01
+0.001
+0.0001
+```
+
+Nesse caso, seria necessário definir a precisão aceita pela regra de negócio.
+
+---
+
+# Conjunto completo recomendado
+
+```java
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class DescontoTest {
+
+    // Verifica os valores imediatamente fora
+    // dos limites inferior e superior.
+    @ParameterizedTest(
+            name = "{0}% deve ser rejeitado"
+    )
+    @ValueSource(ints = {-1, 101})
+    void percentualForaDoIntervaloDeveFalhar(
+            int percentual) {
+
+        // Executa o cálculo e captura a exceção.
+        IllegalArgumentException excecao = assertThrows(
+                IllegalArgumentException.class,
+                () -> Desconto.calcular(100.0, percentual)
+        );
+
+        // Confirma que a exceção aconteceu
+        // pela violação da regra do percentual.
+        assertEquals(
+                "O percentual deve estar entre 0 e 100.",
+                excecao.getMessage()
+        );
+    }
+
+    // Verifica as fronteiras válidas e os valores
+    // imediatamente dentro do intervalo.
+    @ParameterizedTest(
+            name = "{0}% deve resultar em R$ {1}"
+    )
+    @CsvSource({
+            // percentual, esperado
+            "0,   100.0", // Limite inferior
+            "1,    99.0", // Logo dentro do limite inferior
+            "99,    1.0", // Logo dentro do limite superior
+            "100,   0.0"  // Limite superior
+    })
+    void percentualDentroDoIntervaloDeveFuncionar(
+            int percentual,
+            double esperado) {
+
+        // Executa o cálculo usando um preço controlado.
+        double obtido = Desconto.calcular(
+                100.0,
+                percentual
+        );
+
+        // Confirma o resultado com tolerância para double.
+        assertEquals(esperado, obtido, 0.001);
+    }
+}
+```
+
+Os conceitos novos deste tópico são:
+
+| Conceito                 | Finalidade                                               |
+| ------------------------ | -------------------------------------------------------- |
+| Caso de fronteira        | Testar os extremos de uma regra                          |
+| Limite inclusivo         | Os extremos `0` e `100` são aceitos                      |
+| Vizinho interno          | Valor imediatamente dentro da faixa                      |
+| Vizinho externo          | Valor imediatamente fora da faixa                        |
+| Erro off-by-one          | Erro de uma unidade nos limites                          |
+| Partição de equivalência | Agrupamento de entradas com comportamento semelhante     |
+| Domínio discreto         | Conjunto com valores separados, como os números inteiros |
+| Isolamento da variável   | Manter o preço fixo e variar somente o percentual        |
+
+Desafio: se a regra aceitasse idades entre `18` e `65`, inclusive, quais seis valores formariam um teste completo de fronteiras?
+
+
+
+
 
 ## 11. `@Timeout`
 
