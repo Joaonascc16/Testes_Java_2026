@@ -2544,7 +2544,7 @@ Desafio: se a regra aceitasse idades entre `18` e `65`, inclusive, quais seis va
 
 
 
-## 11. `@Timeout`
+## 11. `@Timeout`: limite de tempo para o teste
 
 ```java
 @Test
@@ -2561,7 +2561,7 @@ O teste falha se a chamada ultrapassar o limite. Entretanto:
 - use-o para proteger contra travamentos ou lentidão evidente.
 
 ---
-# 11. `@Timeout`: limite de tempo para o teste
+
 
 O novo conceito deste tópico é a criação de um **limite máximo de tempo** para a execução de um teste.
 
