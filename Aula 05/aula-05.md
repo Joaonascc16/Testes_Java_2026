@@ -711,6 +711,33 @@ Pergunta de verificação: se acrescentarmos a linha abaixo, quais valores serã
 
 ## 8. `@MethodSource`: objetos e dados construídos
 
+Use quando a anotação ficaria difícil de ler ou quando os casos incluem objetos.
+```java
+@ParameterizedTest(name = "{0}")
+@MethodSource("cenariosDeDesconto")
+void calcularDeveAtenderCenarios(
+        String descricao,
+        double preco,
+        int percentual,
+        double esperado) {
+
+    double obtido = Desconto.calcular(preco, percentual);
+
+    // A descrição também funciona como mensagem em caso de falha.
+    assertEquals(esperado, obtido, 0.001, descricao);
+}
+
+static Stream<Arguments> cenariosDeDesconto() {
+    return Stream.of(
+        Arguments.of("sem desconto", 80.0, 0, 80.0),
+        Arguments.of("desconto parcial", 200.0, 25, 150.0),
+        Arguments.of("desconto total", 50.0, 100, 0.0)
+    );
+}
+```
+
+O método fornecedor é static por padrão e retorna um fluxo de argumentos.
+
 Antes de observar os detalhes, pense: e se cada cenário de teste precisasse receber não apenas números, mas também objetos como `Produto`, `Cliente` ou `Cupom`? O `@CsvSource` trabalha bem com dados simples, mas começaria a ficar limitado. É nesse ponto que o `@MethodSource` se torna útil.
 
 ## O que esse código faz?
