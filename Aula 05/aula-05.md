@@ -2561,6 +2561,568 @@ O teste falha se a chamada ultrapassar o limite. Entretanto:
 - use-o para proteger contra travamentos ou lentidão evidente.
 
 ---
+# 11. `@Timeout`: limite de tempo para o teste
+
+O novo conceito deste tópico é a criação de um **limite máximo de tempo** para a execução de um teste.
+
+A ideia é responder:
+
+> Além de produzir o resultado correto, o método termina dentro de um tempo aceitável?
+
+## Código completamente comentado
+
+```java
+// Indica que este é um teste comum do JUnit.
+// Diferentemente de @ParameterizedTest,
+// este método será executado somente uma vez.
+@Test
+
+// Define o tempo máximo permitido para a execução.
+//
+// value = 100:
+// o valor numérico do limite.
+//
+// unit = TimeUnit.MILLISECONDS:
+// informa que o valor 100 está em milissegundos.
+//
+// Portanto, o teste deve terminar em até 100 milissegundos.
+@Timeout(
+        value = 100,
+        unit = TimeUnit.MILLISECONDS
+)
+void calcularDeveTerminarRapidamente() {
+
+    // Executa o método que será monitorado.
+    //
+    // Se a execução terminar dentro de 100 milissegundos,
+// o teste passa em relação ao tempo.
+//
+// Se ultrapassar 100 milissegundos,
+// o JUnit marca o teste como falho.
+    Desconto.calcular(250.0, 15);
+}
+```
+
+Imports necessários:
+
+```java
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
+```
+
+---
+
+# O que é timeout?
+
+`Timeout` significa “tempo limite”.
+
+Imagine uma prova em que o aluno possui 60 minutos para terminar:
+
+* se entregar antes de 60 minutos, está dentro do prazo;
+* se ultrapassar 60 minutos, o limite foi excedido.
+
+No teste:
+
+```java
+@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+```
+
+o limite é de 100 milissegundos:
+
+```text
+1 segundo = 1.000 milissegundos
+100 milissegundos = 0,1 segundo
+```
+
+O comportamento esperado é:
+
+| Tempo de execução | Resultado |
+| ----------------: | --------- |
+|              5 ms | Passa     |
+|             30 ms | Passa     |
+|             99 ms | Passa     |
+|    Mais de 100 ms | Falha     |
+
+O teste não exige que o método leve exatamente 100 milissegundos. Esse é apenas o tempo máximo permitido.
+
+---
+
+# Elementos da anotação
+
+## 1. O atributo `value`
+
+```java
+value = 100
+```
+
+Indica a quantidade de tempo permitida.
+
+O tipo desse atributo é `long`, e o valor precisa ser positivo.
+
+Somente o número não é suficiente: precisamos saber se ele representa segundos, minutos ou milissegundos.
+
+## 2. O atributo `unit`
+
+```java
+unit = TimeUnit.MILLISECONDS
+```
+
+Indica a unidade usada para interpretar o número `100`.
+
+Sem essa informação, não saberíamos se o limite seria:
+
+```text
+100 segundos
+100 milissegundos
+100 minutos
+```
+
+## 3. O que é `TimeUnit`?
+
+`TimeUnit` é um `enum` da biblioteca padrão do Java:
+
+```java
+java.util.concurrent.TimeUnit
+```
+
+Um `enum` representa um conjunto fechado de opções.
+
+Algumas unidades disponíveis são:
+
+| Constante      | Unidade        |
+| -------------- | -------------- |
+| `NANOSECONDS`  | Nanossegundos  |
+| `MICROSECONDS` | Microssegundos |
+| `MILLISECONDS` | Milissegundos  |
+| `SECONDS`      | Segundos       |
+| `MINUTES`      | Minutos        |
+| `HOURS`        | Horas          |
+| `DAYS`         | Dias           |
+
+Exemplos:
+
+```java
+@Timeout(value = 500, unit = TimeUnit.MILLISECONDS)
+```
+
+Limite de 500 milissegundos.
+
+```java
+@Timeout(value = 2, unit = TimeUnit.SECONDS)
+```
+
+Limite de 2 segundos.
+
+```java
+@Timeout(value = 1, unit = TimeUnit.MINUTES)
+```
+
+Limite de 1 minuto.
+
+## 4. Unidade padrão
+
+Se omitirmos `unit`, o JUnit utiliza segundos:
+
+```java
+@Timeout(2)
+```
+
+É equivalente a:
+
+```java
+@Timeout(
+        value = 2,
+        unit = TimeUnit.SECONDS
+)
+```
+
+Para fins didáticos, declarar a unidade explicitamente torna a intenção mais clara. A unidade padrão e os valores aceitos estão documentados na [API oficial do JUnit](https://docs.junit.org/5.14.4/api/org.junit.jupiter.api/org/junit/jupiter/api/Timeout.html).
+
+---
+
+# O que exatamente o teste verifica?
+
+Este teste verifica somente uma característica:
+
+```text
+O método termina dentro de 100 milissegundos?
+```
+
+Ele não verifica se o cálculo está correto.
+
+Por exemplo, o método poderia retornar um resultado completamente errado em 1 milissegundo e o teste ainda passaria:
+
+```java
+public static double calcular(
+        double preco,
+        int percentual) {
+
+    // Resultado errado, mas execução rápida.
+    return -999;
+}
+```
+
+O teste de timeout passaria porque não existe uma asserção verificando o resultado.
+
+Uma versão mais completa pode verificar tempo e resultado:
+
+```java
+@Test
+@Timeout(
+        value = 100,
+        unit = TimeUnit.MILLISECONDS
+)
+void calcularDeveTerminarRapidamente() {
+
+    // Act: executa o cálculo.
+    double obtido = Desconto.calcular(250.0, 15);
+
+    // Assert: verifica também o resultado funcional.
+    assertEquals(212.50, obtido, 0.001);
+}
+```
+
+Nesse caso, o teste verifica:
+
+1. O método termina em até 100 milissegundos.
+2. O resultado calculado é `212.50`.
+
+Entretanto, separar responsabilidades também pode ser uma boa escolha:
+
+```java
+@Test
+void calcularDeveProduzirResultadoCorreto() {
+    double obtido = Desconto.calcular(250.0, 15);
+    assertEquals(212.50, obtido, 0.001);
+}
+
+@Test
+@Timeout(
+        value = 100,
+        unit = TimeUnit.MILLISECONDS
+)
+void calcularDeveTerminarRapidamente() {
+    Desconto.calcular(250.0, 15);
+}
+```
+
+Assim, quando houver falha, o nome do teste indica se o problema é de resultado ou de tempo.
+
+---
+
+# Contra quais problemas o timeout protege?
+
+## 1. Laço infinito
+
+Considere um erro na implementação:
+
+```java
+public static double calcular(
+        double preco,
+        int percentual) {
+
+    // Erro: a condição nunca se torna falsa.
+    while (percentual >= 0) {
+        System.out.println("Calculando...");
+    }
+
+    return preco;
+}
+```
+
+Sem limite de tempo, o teste poderia ficar executando indefinidamente.
+
+Com:
+
+```java
+@Timeout(value = 100, unit = TimeUnit.MILLISECONDS)
+```
+
+o JUnit identifica que o método ultrapassou o tempo permitido e marca o teste como falho.
+
+## 2. Algoritmo excessivamente lento
+
+Um método pode terminar, mas realizar trabalho desnecessário:
+
+```java
+public static double calcular(
+        double preco,
+        int percentual) {
+
+    // Simulação de processamento desnecessário.
+    for (long i = 0; i < 10_000_000_000L; i++) {
+        // Operação sem utilidade.
+    }
+
+    return preco - preco * percentual / 100.0;
+}
+```
+
+O resultado pode estar correto, mas o método é excessivamente lento. O timeout ajuda a detectar essa lentidão evidente.
+
+## 3. Espera por recurso externo
+
+Um teste pode ficar esperando:
+
+* resposta de rede;
+* consulta ao banco de dados;
+* liberação de um arquivo;
+* desbloqueio de uma thread;
+* resposta de um serviço externo.
+
+O timeout impede que a suíte inteira permaneça bloqueada indefinidamente.
+
+---
+
+# Por que `@Timeout` não é benchmark?
+
+Um benchmark mede desempenho com maior rigor.
+
+Ele costuma considerar:
+
+* várias execuções;
+* aquecimento da JVM;
+* compilação JIT;
+* média, mediana e variação;
+* consumo de memória;
+* condições controladas;
+* interferência do sistema operacional.
+
+O `@Timeout` realiza uma pergunta mais simples:
+
+```text
+A execução ultrapassou o limite definido?
+```
+
+Ele não responde com precisão:
+
+```text
+Qual implementação é mais rápida?
+Quanto o desempenho melhorou?
+Qual é o tempo médio?
+Quantas operações são realizadas por segundo?
+```
+
+Para avaliações rigorosas de desempenho em Java, é comum utilizar o **JMH — Java Microbenchmark Harness**. O `@Timeout` é mais apropriado como proteção contra travamentos e regressões de desempenho muito evidentes.
+
+## Comparação
+
+| Característica               | `@Timeout`          | Benchmark                  |
+| ---------------------------- | ------------------- | -------------------------- |
+| Detecta travamento           | Sim                 | Pode detectar              |
+| Define tempo máximo          | Sim                 | Não é o objetivo principal |
+| Mede tempo com precisão      | Não                 | Sim                        |
+| Executa aquecimento da JVM   | Não necessariamente | Sim                        |
+| Compara desempenho           | Não adequadamente   | Sim                        |
+| Adequado para teste unitário | Sim                 | Normalmente separado       |
+
+---
+
+# Por que limites muito curtos são perigosos?
+
+Considere:
+
+```java
+@Timeout(
+        value = 1,
+        unit = TimeUnit.MILLISECONDS
+)
+```
+
+Mesmo que o método normalmente execute rapidamente, o teste pode falhar devido a fatores externos:
+
+* computador ocupado;
+* antivírus;
+* depurador ativo;
+* inicialização da JVM;
+* coleta de lixo;
+* servidor de integração contínua sobrecarregado;
+* escalonamento das threads pelo sistema operacional.
+
+Esse tipo de teste é chamado de **instável** ou **flaky** quando passa algumas vezes e falha em outras sem alteração no código.
+
+Analogia: se uma pessoa costuma percorrer um trajeto em dez minutos, estabelecer um limite de dez minutos e um segundo é frágil. Um semáforo diferente já provocaria atraso. Um limite razoável deve possuir margem de segurança.
+
+## Exemplo frágil
+
+```java
+@Timeout(
+        value = 1,
+        unit = TimeUnit.MILLISECONDS
+)
+```
+
+## Exemplo com margem
+
+```java
+@Timeout(
+        value = 500,
+        unit = TimeUnit.MILLISECONDS
+)
+```
+
+Isso não significa que `500 ms` seja sempre o valor correto. O limite deve considerar:
+
+* comportamento esperado;
+* ambiente de execução;
+* custo real da operação;
+* risco de travamento;
+* necessidade do sistema.
+
+---
+
+# Aplicação no método e na classe
+
+## Timeout em um método
+
+```java
+@Test
+@Timeout(2)
+void operacaoDeveTerminar() {
+    executarOperacao();
+}
+```
+
+O limite vale apenas para esse teste.
+
+## Timeout em uma classe
+
+A anotação também pode ser colocada na classe:
+
+```java
+// Aplica o limite aos métodos de teste da classe.
+@Timeout(
+        value = 2,
+        unit = TimeUnit.SECONDS
+)
+class DescontoTest {
+
+    @Test
+    void deveCalcularDezPorCento() {
+        Desconto.calcular(100.0, 10);
+    }
+
+    @Test
+    void deveCalcularVintePorCento() {
+        Desconto.calcular(100.0, 20);
+    }
+}
+```
+
+Nesse caso, os métodos de teste da classe recebem o limite de dois segundos. A documentação oficial também permite o uso em métodos de ciclo de vida como `@BeforeEach`, `@AfterEach`, `@BeforeAll` e `@AfterAll`. [JUnit `@Timeout`](https://docs.junit.org/5.14.4/api/org.junit.jupiter.api/org/junit/jupiter/api/Timeout.html)
+
+---
+
+# Thread de execução
+
+Uma **thread** é uma linha de execução dentro do programa.
+
+O JUnit permite controlar se o código monitorado deve executar:
+
+* na mesma thread do teste;
+* em uma thread separada.
+
+Exemplo explícito na mesma thread:
+
+```java
+@Test
+@Timeout(
+        value = 100,
+        unit = TimeUnit.MILLISECONDS,
+        threadMode = Timeout.ThreadMode.SAME_THREAD
+)
+void deveTerminarNaMesmaThread() {
+    Desconto.calcular(250.0, 15);
+}
+```
+
+Exemplo em uma thread separada:
+
+```java
+@Test
+@Timeout(
+        value = 100,
+        unit = TimeUnit.MILLISECONDS,
+        threadMode = Timeout.ThreadMode.SEPARATE_THREAD
+)
+void deveTerminarEmThreadSeparada() {
+    Desconto.calcular(250.0, 15);
+}
+```
+
+O modo padrão declarado pela anotação é `INFERRED`: o JUnit consulta a configuração do projeto e, quando ela não existe, utiliza a mesma thread. A [documentação oficial](https://docs.junit.org/5.14.4/api/org.junit.jupiter.api/org/junit/jupiter/api/Timeout.html) descreve `SAME_THREAD` e `SEPARATE_THREAD`.
+
+Para este exemplo didático, não é necessário configurar `threadMode`. A forma simples é suficiente:
+
+```java
+@Timeout(
+        value = 100,
+        unit = TimeUnit.MILLISECONDS
+)
+```
+
+---
+
+# Versão final recomendada e comentada
+
+```java
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class DescontoTest {
+
+    // Indica que o método é um teste do JUnit.
+    @Test
+
+    // Estabelece o limite máximo de execução:
+    //
+    // value = 100:
+    // quantidade de tempo permitida.
+    //
+    // unit = MILLISECONDS:
+    // o valor está expresso em milissegundos.
+    //
+    // 100 ms equivalem a 0,1 segundo.
+    @Timeout(
+            value = 100,
+            unit = TimeUnit.MILLISECONDS
+    )
+    void calcularDeveTerminarRapidamente() {
+
+        // Act: executa o método monitorado.
+        double obtido = Desconto.calcular(250.0, 15);
+
+        // Assert: além do tempo, verifica se
+        // o cálculo produziu o resultado correto.
+        assertEquals(212.50, obtido, 0.001);
+    }
+}
+```
+
+Os conceitos novos deste tópico são:
+
+| Conceito          | Finalidade                                    |
+| ----------------- | --------------------------------------------- |
+| `@Timeout`        | Determinar o tempo máximo do teste            |
+| `value`           | Informar a quantidade de tempo                |
+| `TimeUnit`        | Informar a unidade de tempo                   |
+| `enum`            | Representar um conjunto fechado de opções     |
+| Timeout na classe | Aplicar limite a vários testes                |
+| Teste instável    | Teste que falha por variações do ambiente     |
+| Benchmark         | Medição rigorosa de desempenho                |
+| Thread            | Linha de execução do programa                 |
+| `threadMode`      | Definir em qual thread o teste será executado |
+
+Desafio: qual é mais adequado para proteger contra um possível laço infinito: `@Timeout` ou um benchmark?
+
+
+
 
 ## 12. Erros frequentes
 
