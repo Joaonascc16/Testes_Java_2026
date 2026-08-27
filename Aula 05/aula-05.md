@@ -169,6 +169,27 @@ import static org.junit.jupiter.api.Assertions.*;
 
 ## 6. `@ValueSource`: um argumento simples
 
+```java
+@ParameterizedTest(name = "preço inválido: {0}")
+@ValueSource(doubles = {-0.01, -1.0, -100.0})
+void precoNegativoDeveLancarExcecao(double preco) {
+    // Arrange: o preço vem da anotação e o percentual é fixo.
+    int percentual = 10;
+
+    // Act: assertThrows executa a expressão e captura a exceção.
+    IllegalArgumentException excecao = assertThrows(
+        IllegalArgumentException.class,
+        () -> Desconto.calcular(preco, percentual)
+      );
+
+    // Assert: a mensagem documenta a regra de negócio.
+     assertEquals(
+        "O preço não pode ser negativo.",
+        excecao.getMessage()
+      );
+    }
+```
+
 Use quando apenas um valor varia entre as execuções.
 
 ```java
